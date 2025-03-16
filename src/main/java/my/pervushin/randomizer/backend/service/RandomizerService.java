@@ -18,9 +18,9 @@ import java.util.Random;
 @Service
 public class RandomizerService {
 
-    private static final int MAX_WINNERS = 3;
+    private static final int MAX_WINNERS = 10;
     private static final int TOTAL_NUMBERS = 150;
-    private static final int MAX_STAGES = 1;
+    private static final int MAX_STAGES = 7;
 
     @Autowired
     private CurrentStateRepository currentStateRepository;
