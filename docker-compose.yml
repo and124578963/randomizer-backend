@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    image: and124578963/randomizer-app:2026.04.02
+    ports:
+      - "1111:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/random
+      SPRING_DATASOURCE_USERNAME: randomizer
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-randomizer}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: random
+      POSTGRES_USER: randomizer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-randomizer}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U randomizer -d random"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

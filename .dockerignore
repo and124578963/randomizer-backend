@@ -1,0 +1,5 @@
+.git
+.idea
+**/node_modules
+frontend/randomizer-frontend/build
+target

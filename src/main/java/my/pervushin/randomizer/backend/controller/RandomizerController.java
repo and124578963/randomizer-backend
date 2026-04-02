@@ -24,7 +24,12 @@ public class RandomizerController {
     // API для генерации нового числа в текущем этапе
     @PostMapping("/generate")
     public CurrentState generateNumber() {
-        return randomizerService.generateNumber();
+        return randomizerService.generateNumber(false);
+    }
+
+    @PostMapping("/regenerate")
+    public CurrentState regenerateNumber() {
+        return randomizerService.generateNumber(true);
     }
 
     // API для перевода текущего состояния в следующий статус

@@ -19,8 +19,8 @@ import java.util.Random;
 public class RandomizerService {
 
     private static final int MAX_WINNERS = 10;
-    private static final int TOTAL_NUMBERS = 150;
-    private static final int MAX_STAGES = 7;
+    private static final int TOTAL_NUMBERS = 250;
+    private static final int MAX_STAGES = 1;
 
     @Autowired
     private CurrentStateRepository currentStateRepository;
@@ -31,30 +31,57 @@ public class RandomizerService {
     @Autowired
     private RemainingNumerRepository remainingNumerRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        jdbcTemplate.execute("UPDATE current_state SET version = 0 WHERE version IS NULL");
+    }
+
     private Random random = new Random();
 
     @Transactional
     public CurrentState getCurrentState() {
         return currentStateRepository.findById(1L).orElseGet(() -> {
-            CurrentState state = initializeState();
-            remainingNumerRepository.saveAll(state.getRemainingNumbers());
-            currentStateRepository.save(state);
-            return state;
+            CurrentState state = new CurrentState();
+            state.setCurrentStage(1);
+            state.setCurrentValue(0);
+            state.setRemainingClicks(MAX_WINNERS);
+            state.setStatus("СТАРТ");
+            state.setRemainingStages(MAX_STAGES);
+            state.setDrawnNumbers(new ArrayList<>());
+            state.addAllremainingNumbers(generateNumberList());
+            return currentStateRepository.save(state);
         });
     }
 
+    @Transactional
     public CurrentState reset() {
         randomNumberRepository.deleteAll();
-        remainingNumerRepository.deleteAll();
-        CurrentState state = initializeState();
-        remainingNumerRepository.saveAll(state.getRemainingNumbers());
-        currentStateRepository.save(state);
-        return state;
+        
+        CurrentState state = currentStateRepository.findById(1L).orElseGet(() -> new CurrentState());
+        
+        // Очищаем старые невыпавшие числа. Благодаря orphanRemoval = true, 
+        // JPA автоматически удалит их из базы.
+        state.getRemainingNumbers().clear();
+        
+        state.setCurrentStage(1);
+        state.setCurrentValue(0);
+        state.setDrawnNumbers(new ArrayList<>());
+        state.setRemainingClicks(MAX_WINNERS);
+        state.setStatus("СТАРТ");
+        state.setRemainingStages(MAX_STAGES);
+        
+        // Генерируем новые числа
+        state.addAllremainingNumbers(generateNumberList());
+        
+        return currentStateRepository.save(state);
     }
     @Transactional
-    public CurrentState generateNumber() {
+    public CurrentState generateNumber(boolean regenerate) {
         CurrentState state = getCurrentState();
-        if (state.getCurrentValue() != null && state.getCurrentValue() != 0) {
+        if (!regenerate &&state.getCurrentValue() != null && state.getCurrentValue() != 0) {
             throw new RuntimeException("Нужно сначала перевести состояние в следующий статус (очистить текущее значение).");
         }
         List<RemainingNumber> remaining = state.getRemainingNumbers();
@@ -73,7 +100,15 @@ public class RandomizerService {
         rn.setValue(newNumber.getNumber());
         rn.setStage(state.getCurrentStage());
         randomNumberRepository.save(rn);
-        state.setStatus("НОМЕР СГЕНЕРИРОВАН");
+        if (regenerate) {
+            if(state.getStatus().equals("НОМЕР ПЕРЕГЕНЕРИРОВАН")) {
+                state.setStatus("НОМЕР ПЕРЕГЕНЕРИРОВАН2");
+            } else {
+                state.setStatus("НОМЕР ПЕРЕГЕНЕРИРОВАН");
+            }
+        } else {
+            state.setStatus("НОМЕР СГЕНЕРИРОВАН");
+        }
         currentStateRepository.save(state);
         return state;
     }
@@ -139,7 +174,7 @@ public class RandomizerService {
         state.addAllremainingNumbers(generateNumberList());
         state.setDrawnNumbers(new ArrayList<>());
         state.setRemainingClicks(MAX_WINNERS);
-        state.setStatus("ГОТОВ");
+        state.setStatus("СТАРТ");
         state.setRemainingStages(MAX_STAGES);
         return state;
     }

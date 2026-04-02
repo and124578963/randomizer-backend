@@ -21,6 +21,9 @@ public class CurrentState {
     @Id
     private Long id = 1L;
 
+    @Version
+    private Long version;
+
     // Текущее значение на экране
     private Integer currentValue;
 
